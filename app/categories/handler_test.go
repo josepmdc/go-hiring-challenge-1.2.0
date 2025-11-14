@@ -58,7 +58,7 @@ func TestGetAll(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	t.Run("given a valid request to create a category, it should return 200 and the created category", func(t *testing.T) {
+	t.Run("given a valid request to create a category, it should return 201 and the created category", func(t *testing.T) {
 		svc := NewMockService(t)
 
 		svc.MockCreateCategory(func(req categories.CreateCategoryReq) (*models.Category, error) {
@@ -73,7 +73,7 @@ func TestCreate(t *testing.T) {
 		res := httptest.NewRecorder()
 
 		categories.NewHandler(svc).HandlePost(res, req)
-		assert.Equal(t, http.StatusOK, res.Code)
+		assert.Equal(t, http.StatusCreated, res.Code)
 		assert.JSONEq(t, `{ "code": "CLOTHING", "name": "Category 1" }`, res.Body.String())
 	})
 

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -57,7 +58,10 @@ func (r *ProductsRepository) GetProductByCode(code string) (*Product, error) {
 		Where("code = ?", code)
 
 	var product Product
-	if err := query.Take(&product).Error; err != nil {
+	switch err := query.Take(&product).Error; {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return nil, ErrNotFound
+	case err != nil:
 		return nil, err
 	}
 	return &product, nil

@@ -7,8 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrNotFound = errors.New("not found")
-
 type CategoriesRepository struct {
 	db *gorm.DB
 }

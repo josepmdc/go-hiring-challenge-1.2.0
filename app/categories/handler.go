@@ -83,7 +83,7 @@ func (h *CategoriesHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	api.OKResponse(w, Category{
+	api.CreatedResponse(w, Category{
 		Code: newCategory.Code,
 		Name: newCategory.Name,
 	})
