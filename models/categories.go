@@ -1,11 +1,11 @@
 package models
 
-type ProductCategory struct {
+type Category struct {
 	ID   uint   `gorm:"primaryKey"`
 	Code string `gorm:"uniqueIndex;not null"`
 	Name string `gorm:"not null"`
 }
 
-func (c *ProductCategory) TableName() string {
-	return "product_categories"
+func (c *Category) TableName() string {
+	return "categories"
 }

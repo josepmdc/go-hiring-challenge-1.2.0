@@ -58,7 +58,10 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	products, count, err := h.svc.GetAllProducts(params)
 	if err != nil {
-		// TODO: map each type of error to a specific HTTP error code, ideally in a middleware
+		// we shouldn't really dump internal error messages in the response
+		// like this, since they can expose critical information of the system.
+		// We should have some middleware that cleans error messages,
+		// but for the simplicity of the task we'll leave it like this
 		api.ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}

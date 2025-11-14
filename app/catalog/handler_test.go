@@ -6,29 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mytheresa/go-hiring-challenge/app/catalog"
-	"github.com/mytheresa/go-hiring-challenge/models"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/mytheresa/go-hiring-challenge/app/catalog"
+	"github.com/mytheresa/go-hiring-challenge/models"
 )
-
-type MockService struct {
-	t                  *testing.T
-	getAllProductsMock func(*models.CatalogParams) ([]models.Product, int64, error)
-}
-
-func NewMockService(t *testing.T) *MockService {
-	return &MockService{t: t}
-}
-
-func (svc *MockService) MockGetAllProducts(fn func(params *models.CatalogParams) ([]models.Product, int64, error)) {
-	svc.getAllProductsMock = fn
-}
-
-func (svc *MockService) GetAllProducts(params *models.CatalogParams) ([]models.Product, int64, error) {
-	assert.NotNil(svc.t, svc.getAllProductsMock, "unexpected call to GetAllProducts")
-	return svc.getAllProductsMock(params)
-}
 
 func TestGetAll(t *testing.T) {
 	testProduct := models.Product{
@@ -37,7 +20,7 @@ func TestGetAll(t *testing.T) {
 		Price: decimal.NewFromFloat(42.256),
 		// add a variant to make sure it doesn't show up in the JSON response
 		Variants: []models.Variant{{ID: 321}},
-		Category: &models.ProductCategory{
+		Category: &models.Category{
 			ID:   432,
 			Code: "CLOTHING",
 			Name: "Category 1",
@@ -298,4 +281,23 @@ func TestGetAll(t *testing.T) {
 			res.Body.String(),
 		)
 	})
+}
+
+type MockService struct {
+	t *testing.T
+
+	getAllProductsMock func(*models.CatalogParams) ([]models.Product, int64, error)
+}
+
+func NewMockService(t *testing.T) *MockService {
+	return &MockService{t: t}
+}
+
+func (svc *MockService) MockGetAllProducts(mock func(params *models.CatalogParams) ([]models.Product, int64, error)) {
+	svc.getAllProductsMock = mock
+}
+
+func (svc *MockService) GetAllProducts(params *models.CatalogParams) ([]models.Product, int64, error) {
+	assert.NotNil(svc.t, svc.getAllProductsMock, "unexpected call to GetAllProducts")
+	return svc.getAllProductsMock(params)
 }

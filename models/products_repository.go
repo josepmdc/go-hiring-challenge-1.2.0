@@ -23,8 +23,8 @@ func (r *ProductsRepository) GetAllProducts(params *CatalogParams) ([]Product, i
 
 	if params.CategoryCode != nil {
 		query = query.
-			Joins("JOIN product_categories ON products.category_id = product_categories.id").
-			Where("product_categories.code = ?", *params.CategoryCode)
+			Joins("JOIN categories ON products.category_id = categories.id").
+			Where("categories.code = ?", *params.CategoryCode)
 	}
 
 	if params.PriceLt != nil {
