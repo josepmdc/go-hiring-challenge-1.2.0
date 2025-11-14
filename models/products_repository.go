@@ -49,3 +49,16 @@ func (r *ProductsRepository) GetAllProducts(params *CatalogParams) ([]Product, i
 
 	return products, count, nil
 }
+
+func (r *ProductsRepository) GetProductByCode(code string) (*Product, error) {
+	query := r.db.
+		Preload("Variants").
+		Preload("Category").
+		Where("code = ?", code)
+
+	var product Product
+	if err := query.Take(&product).Error; err != nil {
+		return nil, err
+	}
+	return &product, nil
+}

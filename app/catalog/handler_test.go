@@ -283,10 +283,99 @@ func TestGetAll(t *testing.T) {
 	})
 }
 
+func TestCatalogHandler_HandleGetByCode(t *testing.T) {
+	testProduct := &models.Product{
+		ID:    321,
+		Code:  "ASDF",
+		Price: decimal.NewFromFloat(42.256),
+		Variants: []models.Variant{
+			{ID: 123, Name: "VAR1", SKU: "SKU1", Price: decimal.NewFromFloat(43.22)},
+			{ID: 124, Name: "VAR2", SKU: "SKU2", Price: decimal.NewFromFloat(65.62)},
+		},
+		Category: &models.Category{
+			Code: "CLOTHING",
+			Name: "Category 1",
+		},
+	}
+
+	expectedProductResponse := `
+	{
+		"code": "ASDF",
+		"price": "42.256",
+		"category": { "code": "CLOTHING", "name": "Category 1" },
+		"variants": [
+			{ "name": "VAR1", "sku": "SKU1", "price": "43.22" },
+			{ "name": "VAR2", "sku": "SKU2", "price": "65.62" }
+		]
+	}`
+
+	t.Run("given a valid product code then returns 200 with normalized product", func(t *testing.T) {
+		svc := NewMockService(t)
+
+		svc.MockGetProductByCode(func(code string) (*models.Product, error) {
+			assert.Equal(t, "ASDF", code)
+			return testProduct, nil
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/catalog/ASDF", nil)
+		req.SetPathValue("code", "ASDF")
+		res := httptest.NewRecorder()
+
+		catalog.NewHandler(svc).HandleGetByCode(res, req)
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.JSONEq(t, expectedProductResponse, res.Body.String())
+	})
+
+	t.Run("given a non-existing product code then returns 404", func(t *testing.T) {
+		svc := NewMockService(t)
+
+		svc.MockGetProductByCode(func(code string) (*models.Product, error) {
+			return nil, models.ErrNotFound
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/catalog/UNKNOWN", nil)
+		req.SetPathValue("code", "UNKNOWN")
+		res := httptest.NewRecorder()
+
+		catalog.NewHandler(svc).HandleGetByCode(res, req)
+		assert.Equal(t, http.StatusNotFound, res.Code)
+		assert.JSONEq(t, `{ "error": "could not find product with code UNKNOWN" }`, res.Body.String())
+	})
+
+	t.Run("given a service error then returns 500", func(t *testing.T) {
+		svc := NewMockService(t)
+
+		svc.MockGetProductByCode(func(code string) (*models.Product, error) {
+			return nil, fmt.Errorf("oops")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/catalog/ASDF", nil)
+		req.SetPathValue("code", "ASDF")
+		res := httptest.NewRecorder()
+
+		catalog.NewHandler(svc).HandleGetByCode(res, req)
+		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		assert.JSONEq(t, `{ "error": "failed to get product by code: oops" }`, res.Body.String())
+	})
+
+	t.Run("given an empty product code then returns 400", func(t *testing.T) {
+		svc := NewMockService(t)
+
+		req := httptest.NewRequest(http.MethodGet, "/catalog/", nil)
+		req.SetPathValue("code", "")
+		res := httptest.NewRecorder()
+
+		catalog.NewHandler(svc).HandleGetByCode(res, req)
+		assert.Equal(t, http.StatusBadRequest, res.Code)
+		assert.JSONEq(t, `{ "error": "code must be set" }`, res.Body.String())
+	})
+}
+
 type MockService struct {
 	t *testing.T
 
-	getAllProductsMock func(*models.CatalogParams) ([]models.Product, int64, error)
+	getAllProductsMock   func(*models.CatalogParams) ([]models.Product, int64, error)
+	mockGetProductByCode func(code string) (*models.Product, error)
 }
 
 func NewMockService(t *testing.T) *MockService {
@@ -300,4 +389,13 @@ func (svc *MockService) MockGetAllProducts(mock func(params *models.CatalogParam
 func (svc *MockService) GetAllProducts(params *models.CatalogParams) ([]models.Product, int64, error) {
 	assert.NotNil(svc.t, svc.getAllProductsMock, "unexpected call to GetAllProducts")
 	return svc.getAllProductsMock(params)
+}
+
+func (m *MockService) MockGetProductByCode(fn func(code string) (*models.Product, error)) {
+	m.mockGetProductByCode = fn
+}
+
+func (m *MockService) GetProductByCode(code string) (*models.Product, error) {
+	assert.NotNil(m.t, m.mockGetProductByCode, "unexpected call to GetProductByCode")
+	return m.mockGetProductByCode(code)
 }

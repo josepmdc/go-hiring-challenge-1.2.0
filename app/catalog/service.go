@@ -7,7 +7,8 @@ import (
 )
 
 type CatalogRepo interface {
-	GetAllProducts(*models.CatalogParams) ([]models.Product, int64, error)
+	GetAllProducts(params *models.CatalogParams) ([]models.Product, int64, error)
+	GetProductByCode(code string) (*models.Product, error)
 }
 
 type Service struct {
@@ -30,5 +31,20 @@ func (svc *Service) GetAllProducts(params *models.CatalogParams) ([]models.Produ
 		return nil, 0, fmt.Errorf("failed to get all products: %w", err)
 	}
 
+	for _, p := range res {
+		p.NormalizeVariantPrices()
+	}
+
 	return res, count, nil
+}
+
+func (svc *Service) GetProductByCode(code string) (*models.Product, error) {
+	product, err := svc.repo.GetProductByCode(code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get product by code from repo: %w", err)
+	}
+
+	product.NormalizeVariantPrices()
+
+	return product, nil
 }

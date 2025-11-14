@@ -48,6 +48,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /catalog", catalogHandlers.HandleGet)
+	mux.HandleFunc("GET /catalog/{code}", catalogHandlers.HandleGetByCode)
 
 	mux.HandleFunc("GET /categories", categoriesHandlers.HandleGet)
 	mux.HandleFunc("POST /categories", categoriesHandlers.HandlePost)

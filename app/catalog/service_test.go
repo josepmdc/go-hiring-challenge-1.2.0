@@ -83,10 +83,50 @@ func TestService_GetAllProducts(t *testing.T) {
 	})
 }
 
+func TestService_GetProductByCode(t *testing.T) {
+	t.Run("given variants with zero price, they inherit the product price", func(t *testing.T) {
+		mockRepo := NewMockCatalogRepo(t)
+
+		productPrice := decimal.NewFromFloat(43.21)
+		variant1 := models.Variant{Price: decimal.Zero}
+		variant2 := models.Variant{Price: decimal.NewFromFloat(50.43)}
+
+		mockRepo.MockGetProductByCode(func(code string) (*models.Product, error) {
+			return &models.Product{
+				Code:     "P1",
+				Price:    productPrice,
+				Variants: []models.Variant{variant1, variant2},
+			}, nil
+		})
+
+		svc := catalog.NewService(mockRepo)
+		result, err := svc.GetProductByCode("P1")
+
+		assert.NoError(t, err)
+		assert.Equal(t, productPrice, result.Variants[0].Price)
+		assert.Equal(t, decimal.NewFromFloat(50.43), result.Variants[1].Price)
+	})
+
+	t.Run("given the repo returns an error, the error is returned", func(t *testing.T) {
+		mockRepo := NewMockCatalogRepo(t)
+
+		expectedError := errors.New("oops")
+
+		mockRepo.MockGetProductByCode(func(code string) (*models.Product, error) {
+			return nil, expectedError
+		})
+
+		result, err := catalog.NewService(mockRepo).GetProductByCode("P1")
+		assert.ErrorIs(t, err, expectedError)
+		assert.Nil(t, result)
+	})
+}
+
 type MockCatalogRepo struct {
 	t *testing.T
 
-	mockGetAllProducts func(params *models.CatalogParams) ([]models.Product, int64, error)
+	mockGetAllProducts   func(params *models.CatalogParams) ([]models.Product, int64, error)
+	mockGetProductByCode func(code string) (*models.Product, error)
 }
 
 func NewMockCatalogRepo(t *testing.T) *MockCatalogRepo {
@@ -100,4 +140,13 @@ func (m *MockCatalogRepo) MockGetAllProducts(fn func(params *models.CatalogParam
 func (m *MockCatalogRepo) GetAllProducts(params *models.CatalogParams) ([]models.Product, int64, error) {
 	assert.NotNil(m.t, m.mockGetAllProducts, "unexpected call to GetAllProducts")
 	return m.mockGetAllProducts(params)
+}
+
+func (m *MockCatalogRepo) MockGetProductByCode(fn func(code string) (*models.Product, error)) {
+	m.mockGetProductByCode = fn
+}
+
+func (m *MockCatalogRepo) GetProductByCode(code string) (*models.Product, error) {
+	assert.NotNil(m.t, m.mockGetProductByCode, "unexpected call to GetProductByCode")
+	return m.mockGetProductByCode(code)
 }
