@@ -2,8 +2,6 @@ package models
 
 import (
 	"github.com/shopspring/decimal"
-
-	"github.com/mytheresa/go-hiring-challenge/lib/fn"
 )
 
 // Product represents a product in the catalog.
@@ -22,12 +20,11 @@ func (p *Product) TableName() string {
 }
 
 func (p *Product) NormalizeVariantPrices() {
-	p.Variants = fn.Map(p.Variants, func(v Variant) Variant {
-		if v.Price.IsZero() {
-			v.Price = p.Price
+	for i := range p.Variants {
+		if p.Variants[i].Price.IsZero() {
+			p.Variants[i].Price = p.Price
 		}
-		return v
-	})
+	}
 }
 
 type CatalogParams struct {
