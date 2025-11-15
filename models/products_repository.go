@@ -1,6 +1,9 @@
 package models
 
 import (
+	"errors"
+	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -14,10 +17,52 @@ func NewProductsRepository(db *gorm.DB) *ProductsRepository {
 	}
 }
 
-func (r *ProductsRepository) GetAllProducts() ([]Product, error) {
+func (r *ProductsRepository) GetAllProducts(params *CatalogParams) ([]Product, int64, error) {
 	var products []Product
-	if err := r.db.Preload("Variants").Find(&products).Error; err != nil {
+
+	query := r.db.Model(&Product{})
+
+	if params.CategoryCode != nil {
+		query = query.
+			Joins("JOIN categories ON products.category_id = categories.id").
+			Where("categories.code = ?", *params.CategoryCode)
+	}
+
+	if params.PriceLt != nil {
+		query = query.Where("price < ?", *params.PriceLt)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to get count from DB: %w", err)
+	}
+
+	query = query.
+		Order("id"). // to ensure deterministic sorting for pagination
+		Preload("Variants").
+		Preload("Category").
+		Limit(params.Limit).
+		Offset(params.Offset)
+
+	if err := query.Find(&products).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to get products from DB: %w", err)
+	}
+
+	return products, count, nil
+}
+
+func (r *ProductsRepository) GetProductByCode(code string) (*Product, error) {
+	query := r.db.
+		Preload("Variants").
+		Preload("Category").
+		Where("code = ?", code)
+
+	var product Product
+	switch err := query.Take(&product).Error; {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return nil, ErrNotFound
+	case err != nil:
 		return nil, err
 	}
-	return products, nil
+	return &product, nil
 }
